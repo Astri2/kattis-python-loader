@@ -9,17 +9,17 @@ import requests
 pb_id = "".join(letter for letter in "".join(
     sys.argv[1:]).lower() if letter.isalnum())
 samples_url = f"{sys.argv[1]}/file/statement/samples.zip"
+test_to_run = sys.argv[3:]
 r = requests.get(samples_url)
 r.raise_for_status()
 
 with zipfile.ZipFile(io.BytesIO(r.content)) as z:
-    for file in z.filelist:
-        file_path = Path(file.filename)
-        if file_path.suffix == ".in":
-            test_input = z.read(file).decode("utf-8")
-            test_answer = z.read(f"{file_path.stem}.ans").decode("utf-8")
+    for i in range(1,len(z.filelist)//2+1):
+        if(len(test_to_run) == 0 or str(i) in test_to_run):
+            test_input = z.read(f"{i}.in").decode("utf-8")
+            test_answer = z.read(f"{i}.ans").decode("utf-8")
             p = subprocess.run([sys.executable, sys.argv[2]],
-                               input=test_input, encoding="utf-8", capture_output=True)
+                                input=test_input, encoding="utf-8", capture_output=True)
             if p.returncode != 0:
                 print("Error:", p.stderr)
             print("Sample input:\n", test_input, sep="")
