@@ -25,7 +25,7 @@ with zipfile.ZipFile(io.BytesIO(r.content)) as z:
             print("Sample input:\n", test_input, sep="")
             if p.stdout != test_answer:
                 print("Wrong answer!")
-                print("Expected:,", len(test_answer),"\n", test_answer, sep="")
+                print("Expected:", len(test_answer),"\n", test_answer, sep="")
                 print("Got:", len(p.stdout),"\n", p.stdout, sep="")
             else:
                 print("Good answer!")
