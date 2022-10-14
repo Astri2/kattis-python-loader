@@ -5,17 +5,19 @@ import io
 import re
 import requests
 from enum import Enum
+from time import time
 
 class c(Enum):
 
     __use_colors__ = False
 
     g  = "\033[0m\033[1;92m"
-    gu = "\033[0m\033[4;49;92m"
     r  = "\033[0m\033[1;91m"
+    d  = "\033[0m\033[1;49;90m"
+    gu = "\033[0m\033[4;49;92m"
     ru = "\033[0m\033[4;49;91m"
-    c  = "\033[0m\033[4;96m"
     yu  = "\033[0m\033[4;93m"
+    cu  = "\033[0m\033[4;96m"
 
     w  = "\033[0m"
 
@@ -46,11 +48,13 @@ def main():
     with zipfile.ZipFile(io.BytesIO(r.content)) as z:
         for i in range(1,len(z.filelist)//2+1):
             if(len(tests_to_run) == 0 or str(i) in tests_to_run):
-                print(f"{c.c}Test {i}:{c.w}")
+                print(f"{c.cu}Test {i}{c.w}:")
                 test_input = z.read(f"{i}.in").decode("utf-8")
                 test_answer = re.sub(r"\s+$","",z.read(f"{i}.ans").decode("utf-8"))
+                t = time()
                 p = subprocess.run([sys.executable, sys.argv[2]],
                                     input=test_input, encoding="utf-8", capture_output=True)
+                t = time()-t
                 if p.returncode != 0:
                     print("Error:", p.stderr)
                 out = re.sub(r"\s+$","",p.stdout)
@@ -63,6 +67,7 @@ def main():
                 else:
                     print(f"{c.g}Good answer!{c.w}")
                     print("Answer:\n", out, sep="")
+                print(f"{c.d}took {round(t,3)}s{c.w}")
                 print()
 
 if __name__ == "__main__":
