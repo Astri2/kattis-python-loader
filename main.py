@@ -15,9 +15,7 @@ class c(Enum):
     g  = "\033[0m\033[1;92m"
     r  = "\033[0m\033[1;91m"
     d  = "\033[0m\033[1;49;90m"
-    gu = "\033[0m\033[4;49;92m"
-    ru = "\033[0m\033[4;49;91m"
-    yu  = "\033[0m\033[4;93m"
+    y  = "\033[0m\033[1;93m"
     cu  = "\033[0m\033[4;96m"
 
     w  = "\033[0m"
@@ -29,14 +27,17 @@ class c(Enum):
 
 
 def get_difference_disp(ans,out):
+    lines_ans = ans.split("\n")
+    lines_out = out.split("\n")
+
     f_ans=""; f_out = ""
-    len_min = min(len(ans),len(out))
+    len_min = min(len(lines_ans),len(lines_out))
     for i in range(0,len_min):
-        col = c.gu if ans[i] == out[i] else c.ru
-        f_ans+=str(col)+ans[i]
-        f_out+=str(col)+out[i]
-    f_ans+=str(c.yu)+ans[len_min:]+str(c.w)
-    f_out+=str(c.yu)+out[len_min:]+str(c.w)
+        col = c.g if lines_ans[i] == lines_out[i] else c.r
+        f_ans+=str(col)+lines_ans[i]+"\n"
+        f_out+=str(col)+lines_out[i]+"\n"
+    f_ans+=str(c.y)+"\n".join(lines_ans[len_min:])+str(c.w)
+    f_out+=str(c.y)+"\n".join(lines_out[len_min:])+str(c.w)
     return f_ans,f_out
         
 
