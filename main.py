@@ -1,3 +1,4 @@
+from pathlib import Path
 import subprocess
 import sys
 import zipfile
@@ -33,7 +34,7 @@ def get_difference_disp(ans,out):
     for i in range(0,len_min):
         col = c.gu if ans[i] == out[i] else c.ru
         f_ans+=str(col)+ans[i]
-        f_out+=str(col)+ans[i]
+        f_out+=str(col)+out[i]
     f_ans+=str(c.yu)+ans[len_min:]+str(c.w)
     f_out+=str(c.yu)+out[len_min:]+str(c.w)
     return f_ans,f_out
@@ -46,11 +47,12 @@ def main():
     r = requests.get(samples_url)
     r.raise_for_status()
     with zipfile.ZipFile(io.BytesIO(r.content)) as z:
-        for i in range(1,len(z.filelist)//2+1):
-            if(len(tests_to_run) == 0 or str(i) in tests_to_run):
-                print(f"{c.cu}Test {i}{c.w}:")
-                test_input = z.read(f"{i}.in").decode("utf-8")
-                test_answer = re.sub(r"\s+$","",z.read(f"{i}.ans").decode("utf-8"))
+        filePaths = [Path(file.filename) for file in z.filelist if file.filename.endswith(".in")]
+        for i in range(len(filePaths)):
+            if(len(tests_to_run) == 0 or str(i+1) in tests_to_run):
+                print(f"{c.cu}Test {i+1}{c.w}:")
+                test_input = z.read(filePaths[i].name).decode("utf-8")
+                test_answer = re.sub(r"\s+$","",z.read(f"{filePaths[i].stem}.ans").decode("utf-8"))
                 t = time()
                 p = subprocess.run([sys.executable, sys.argv[2]],
                                     input=test_input, encoding="utf-8", capture_output=True)
