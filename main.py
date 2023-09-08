@@ -42,7 +42,8 @@ def get_difference_disp(ans,out):
         
 
 def main():
-    samples_url = f"{sys.argv[1]}/file/statement/samples.zip"
+    url = sys.argv[1] if sys.argv[1].startswith("https://open.kattis.com/") else f"https://open.kattis.com/problems/{sys.argv[1]}"
+    samples_url = f"{url}/file/statement/samples.zip"
     tests_to_run = [i for i in sys.argv[3:] if re.match("[0-9]+",i)]
     if "-c" in sys.argv[3:]: c.enable_colors()
     r = requests.get(samples_url)
