@@ -78,8 +78,9 @@ def parse_params(argv: list):
             exit(1)
         name = argv[i+1]
         if not url: url = f"https://open.kattis.com/problems/{name}"
-        if not file: 
-            file = Path(f"{folder}{name}.py")
+        else: print(f"{c.y}warning: --name option ingored for problem url because of --url option{c.w}")
+        if not file: file = Path(f"{folder}{name}.py")
+        else: print(f"{c.y}warning: --name option ingored for solution file because of --file option{c.w}")
     if "--test" in argv:
         i = argv.index("--test")+1
         while i < argc and str.isnumeric(argv[i]):
@@ -104,14 +105,21 @@ def main():
     samples_url = f"{url}/file/statement/samples.zip"
     
     r = requests.get(samples_url)
-    r.raise_for_status()
+    if r.status_code == 404:
+        print(f"{c.r}error: {samples_url} not found!{c.w}")
+        exit(1)
+    elif r.status_code != 200:
+        print(f"{c.r}Unknown error while fetching {samples_url}{c.w}")
+        r.raise_for_status()
+        exit(1)
+    
     with zipfile.ZipFile(io.BytesIO(r.content)) as z:
         filePaths = [Path(file.filename) for file in z.filelist if file.filename.endswith(".in")]
         for i in range(len(filePaths)):
             if(len(unit_tests) == 0 or i+1 in unit_tests):
                 print(f"{c.cu}Test {i+1}{c.w}:")
                 test_input = z.read(filePaths[i].name).decode("utf-8")
-                test_answer = re.sub(r"\s+$","",z.read(f"{filePaths[i].stem}.ans").decode("utf-8"))
+                test_answer = z.read(f"{filePaths[i].stem}.ans").decode("utf-8").strip()
                 t = perf_counter()
 
                 p = subprocess.run([sys.executable, solution_path],
@@ -119,7 +127,10 @@ def main():
                 t = perf_counter()-t
                 if p.returncode != 0:
                     print("Error:", p.stderr)
-                out = re.sub(r"\s+$","",p.stdout)
+                out = p.stdout.strip()
+                # strip all lines
+                out = "\n".join([line.strip() for line in out.split("\n")])
+
                 print("Sample input:\n", test_input, sep="")
                 if out != test_answer:
                     print(f"{c.r}Wrong answer!{c.w}")
@@ -128,7 +139,7 @@ def main():
                     print("Got:", len(out),"\n\"", f_out, sep="", end="\"\n")
                 else:
                     print(f"{c.g}Good answer!{c.w}")
-                    print("Answer:\n", out, sep="")
+                    print(f"Answer:\n{c.g}{out}{c.w}")
                 print(f"{c.d}took {round(t,3)}s{c.w}")
                 print()
 
