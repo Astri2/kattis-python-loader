@@ -6,7 +6,7 @@ import io
 import re
 import requests
 from enum import Enum
-from time import time
+from time import perf_counter
 
 class c(Enum):
 
@@ -42,7 +42,16 @@ def get_difference_disp(ans,out):
         
 
 def main():
+    if(len(sys.argv) < 3): 
+        print("not enough arguments")
+        print("format : python3 main.py {problem_url or problem_name} {your_answer_file} [options ...] [unit_tests_to_run ...]")
+        return
     url = sys.argv[1] if sys.argv[1].startswith("https://open.kattis.com/") else f"https://open.kattis.com/problems/{sys.argv[1]}"
+    solution_path = Path(sys.argv[2])
+    if not Path.exists(solution_path):
+        print(f"File {solution_path} does not exist !")
+        return
+    
     samples_url = f"{url}/file/statement/samples.zip"
     tests_to_run = [i for i in sys.argv[3:] if re.match("[0-9]+",i)]
     if "-c" in sys.argv[3:]: c.enable_colors()
@@ -55,10 +64,11 @@ def main():
                 print(f"{c.cu}Test {i+1}{c.w}:")
                 test_input = z.read(filePaths[i].name).decode("utf-8")
                 test_answer = re.sub(r"\s+$","",z.read(f"{filePaths[i].stem}.ans").decode("utf-8"))
-                t = time()
-                p = subprocess.run([sys.executable, sys.argv[2]],
+                t = perf_counter()
+
+                p = subprocess.run([sys.executable, solution_path],
                                     input=test_input, encoding="utf-8", capture_output=True)
-                t = time()-t
+                t = perf_counter()-t
                 if p.returncode != 0:
                     print("Error:", p.stderr)
                 out = re.sub(r"\s+$","",p.stdout)
