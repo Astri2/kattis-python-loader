@@ -88,7 +88,7 @@ def parse_params(argv: list):
             i+=1
     if not(url and file):
         print("missing arguments, no url or file found")
-        print("format : python3 main.py [-u <problem url>] [-f <solution file>] [-n <problem/solution name>] [-t <unit_tests_to_run...>] [<options...>]")
+        print("format : python3 main.py [-u <problem url>] [-f <solution file>] [-d <solution directory>] [-n <problem/solution name>] [-t <unit_tests_to_run...>] [<options...>]")
         exit(1)
     return url, file, unit_tests
 
