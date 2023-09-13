@@ -8,8 +8,6 @@ import requests
 from enum import Enum
 from time import perf_counter
 
-DEFAULT_FOLDER = "../exercises"
-
 class c(Enum):
 
     __use_colors__ = False
@@ -47,34 +45,41 @@ def parse_params(argv: list):
     argc = len(argv)
     url: str = ""
     file: str = ""
-    color: bool = False
     unit_tests: list = []
-    option_map = {"-t": "--test", "-c": "--color", "-u": "--url", "-n": "--name", "-f": "--file"}
+    folder = "./"
+    option_map = {"-t": "--test", "-c": "--color", "-u": "--url", "-n": "--name", "-f": "--file", "-d": "--directory"}
     for i, arg in enumerate(argv): 
         if arg in option_map.keys(): argv[i] = option_map[arg]
     
     if "--color" in argv: 
-        color = True
+        c.enable_colors()
     if "--url" in argv:
         i = argv.index("--url")
         if i+1 == argc:
-            print("error: --url option excepts an url")
+            print(f"{c.r}error: --url option requires an url{c.w}")
             exit(1)
         url = argv[i+1]
     if "--file" in argv:
         i = argv.index("--file")
         if i+1 == argc: 
-            print("error: --file option excepts a file")
+            print(f"{c.r}error: --file option requires a file path{c.w}")
             exit(1)
         file = Path(argv[i+1])
+    if "--directory" in argv:
+        i = argv.index("--directory")
+        if i+1 == argc:
+            print(f"{c.r}error: --folder option requires a folder path{c.w}")
+        if(file): print(f"{c.y}warning: --folder option ingored because of --file option{c.w}")
+        folder = argv[i+1]
     if "--name" in argv:
         i = argv.index("--name")
         if i+1 == argc:
-            print("error: --name option expects a name")
+            print(f"{c.r}error: --name option requires a name{c.w}")
             exit(1)
         name = argv[i+1]
         if not url: url = f"https://open.kattis.com/problems/{name}"
-        if not file: file = Path(f"{DEFAULT_FOLDER}/{name}.py")
+        if not file: 
+            file = Path(f"{folder}{name}.py")
     if "--test" in argv:
         i = argv.index("--test")+1
         while i < argc and str.isnumeric(argv[i]):
@@ -84,18 +89,17 @@ def parse_params(argv: list):
         print("missing arguments, no url or file found")
         print("format : python3 main.py [-u <problem url>] [-f <solution file>] [-n <problem/solution name>] [-t <unit_tests_to_run...>] [<options...>]")
         exit(1)
-    return url, file, color, unit_tests
+    return url, file, unit_tests
 
 def main():
-    url, solution_path, color, unit_tests = parse_params(sys.argv)
+    url, solution_path, unit_tests = parse_params(sys.argv)
     # print(f"url '{url}'\nfile '{solution_path}'\ncolor '{color}'\ntests'{unit_tests}'")
-    print(f"Kattis Problem url: {url}")
-    print(f"Solution file: {solution_path}")
-    print(f"unit test IDs to run:", *unit_tests if unit_tests else ["all"], "\n")
+    print(f"Kattis Problem url: {c.cu}{url}{c.w}")
+    print(f"Solution file: {c.cu}{solution_path}{c.w}")
+    print(f"unit test IDs to run: {c.cu}", *unit_tests if unit_tests else ["all"], f"{c.w}\n",sep="")
     if not Path.exists(solution_path):
-        print(f"File {solution_path} does not exist !")
+        print(f"{c.r}error: file {solution_path} does not exist !{c.w}")
         exit(1)
-    if color: c.enable_colors()
 
     samples_url = f"{url}/file/statement/samples.zip"
     
