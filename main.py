@@ -16,6 +16,7 @@ class c(Enum):
     r  = "\033[0m\033[1;91m"
     d  = "\033[0m\033[1;49;90m"
     y  = "\033[0m\033[1;93m"
+    c  = "\033[0m\033[1;96m"
     cu  = "\033[0m\033[4;96m"
 
     w  = "\033[0m"
@@ -95,9 +96,11 @@ def parse_params(argv: list):
 def main():
     url, solution_path, unit_tests = parse_params(sys.argv)
     # print(f"url '{url}'\nfile '{solution_path}'\ncolor '{color}'\ntests'{unit_tests}'")
-    print(f"Kattis Problem url: {c.cu}{url}{c.w}")
-    print(f"Solution file: {c.cu}{solution_path}{c.w}")
-    print(f"unit test IDs to run: {c.cu}", *unit_tests if unit_tests else ["all"], f"{c.w}\n",sep="")
+    print(f"Kattis Problem url: {c.c}{url}{c.w}")
+    print(f"Solution file: {c.c}{solution_path}{c.w}")
+    if unit_tests: print(f"unit test IDs to run:{c.c}", *unit_tests, f"{c.w}\n")
+    else: print(f"unit test IDs to run: {c.c}all{c.w}\n")
+    
     if not Path.exists(solution_path):
         print(f"{c.r}error: file {solution_path} does not exist !{c.w}")
         exit(1)
@@ -125,13 +128,17 @@ def main():
                 p = subprocess.run([sys.executable, solution_path],
                                     input=test_input, encoding="utf-8", capture_output=True)
                 t = perf_counter()-t
-                if p.returncode != 0:
-                    print("Error:", p.stderr)
+                
                 out = p.stdout.strip()
                 # strip all lines
                 out = "\n".join([line.strip() for line in out.split("\n")])
 
                 print("Sample input:\n", test_input, sep="")
+                if p.returncode != 0:
+                    print(f"{c.r}Error while running solution:{c.w}\n{p.stderr}\n")
+                    print(f"output:\n{out}")
+                    continue
+
                 if out != test_answer:
                     print(f"{c.r}Wrong answer!{c.w}")
                     f_ans,f_out = get_difference_disp(test_answer,out)
@@ -144,4 +151,5 @@ def main():
                 print()
 
 if __name__ == "__main__":
+    print(f" _   __      _   _   _       _                     _\n| | / /     | | | | (_)     | |                   | |\n| |/ /  __ _| |_| |_ _ ___  | |     ___   __ _  __| | ___ _ __\n|    \ / _` | __| __| / __| | |    / _ \ / _` |/ _` |/ _ \ '__|\n| |\  \ (_| | |_| |_| \__ \ | |___| (_) | (_| | (_| |  __/ |\n\_| \_/\__,_|\__|\__|_|___/ \_____/\___/ \__,_|\__,_|\___|_|\n{64*'='}")
     main()
