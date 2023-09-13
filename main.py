@@ -8,6 +8,8 @@ import requests
 from enum import Enum
 from time import perf_counter
 
+DEFAULT_FOLDER = "../exercises"
+
 class c(Enum):
 
     __use_colors__ = False
@@ -41,26 +43,68 @@ def get_difference_disp(ans,out):
     return f_ans,f_out
         
 
+def parse_params(argv: list):
+    argc = len(argv)
+    url: str = ""
+    file: str = ""
+    color: bool = False
+    unit_tests: list = []
+    option_map = {"-t": "--test", "-c": "--color", "-u": "--url", "-n": "--name", "-f": "--file"}
+    for i, arg in enumerate(argv): 
+        if arg in option_map.keys(): argv[i] = option_map[arg]
+    
+    if "--color" in argv: 
+        color = True
+    if "--url" in argv:
+        i = argv.index("--url")
+        if i+1 == argc:
+            print("error: --url option excepts an url")
+            exit(1)
+        url = argv[i+1]
+    if "--file" in argv:
+        i = argv.index("--file")
+        if i+1 == argc: 
+            print("error: --file option excepts a file")
+            exit(1)
+        file = Path(argv[i+1])
+    if "--name" in argv:
+        i = argv.index("--name")
+        if i+1 == argc:
+            print("error: --name option expects a name")
+            exit(1)
+        name = argv[i+1]
+        if not url: url = f"https://open.kattis.com/problems/{name}"
+        if not file: file = Path(f"{DEFAULT_FOLDER}/{name}.py")
+    if "--test" in argv:
+        i = argv.index("--test")+1
+        while i < argc and str.isnumeric(argv[i]):
+            unit_tests.append(int(argv[i]))
+            i+=1
+    if not(url and file):
+        print("missing arguments, no url or file found")
+        print("format : python3 main.py [-u <problem url>] [-f <solution file>] [-n <problem/solution name>] [-t <unit_tests_to_run...>] [<options...>]")
+        exit(1)
+    return url, file, color, unit_tests
+
 def main():
-    if(len(sys.argv) < 3): 
-        print("not enough arguments")
-        print("format : python3 main.py {problem_url or problem_name} {your_answer_file} [options ...] [unit_tests_to_run ...]")
-        return
-    url = sys.argv[1] if sys.argv[1].startswith("https://open.kattis.com/") else f"https://open.kattis.com/problems/{sys.argv[1]}"
-    solution_path = Path(sys.argv[2])
+    url, solution_path, color, unit_tests = parse_params(sys.argv)
+    # print(f"url '{url}'\nfile '{solution_path}'\ncolor '{color}'\ntests'{unit_tests}'")
+    print(f"Kattis Problem url: {url}")
+    print(f"Solution file: {solution_path}")
+    print(f"unit test IDs to run:", *unit_tests if unit_tests else ["all"], "\n")
     if not Path.exists(solution_path):
         print(f"File {solution_path} does not exist !")
-        return
-    
+        exit(1)
+    if color: c.enable_colors()
+
     samples_url = f"{url}/file/statement/samples.zip"
-    tests_to_run = [i for i in sys.argv[3:] if re.match("[0-9]+",i)]
-    if "-c" in sys.argv[3:]: c.enable_colors()
+    
     r = requests.get(samples_url)
     r.raise_for_status()
     with zipfile.ZipFile(io.BytesIO(r.content)) as z:
         filePaths = [Path(file.filename) for file in z.filelist if file.filename.endswith(".in")]
         for i in range(len(filePaths)):
-            if(len(tests_to_run) == 0 or str(i+1) in tests_to_run):
+            if(len(unit_tests) == 0 or i+1 in unit_tests):
                 print(f"{c.cu}Test {i+1}{c.w}:")
                 test_input = z.read(filePaths[i].name).decode("utf-8")
                 test_answer = re.sub(r"\s+$","",z.read(f"{filePaths[i].stem}.ans").decode("utf-8"))
