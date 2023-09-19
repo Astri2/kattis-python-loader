@@ -5,6 +5,7 @@ import zipfile
 import io
 import re
 import requests
+from subprocess import TimeoutExpired
 from enum import Enum
 from time import perf_counter
 
@@ -41,7 +42,6 @@ def get_difference_disp(ans,out):
     f_out+=str(c.y)+"\n".join(lines_out[len_min:])+str(c.w)
     return f_ans,f_out
         
-
 def parse_params(argv: list):
     argc = len(argv)
     url: str = ""
@@ -93,6 +93,32 @@ def parse_params(argv: list):
         exit(1)
     return url, file, unit_tests
 
+def run_test(solution_path: str, test_input: str, test_answer: str):
+    t = perf_counter()
+    p = subprocess.run([sys.executable, solution_path],
+                    input=test_input, encoding="utf-8", capture_output=True, timeout=10.)
+    t = perf_counter()-t
+
+    out = p.stdout.strip()
+    # strip all lines
+    out = "\n".join([line.strip() for line in out.split("\n")])
+
+    print("Sample input:\n", test_input, sep="")
+    if p.returncode != 0:
+        print(f"{c.r}Error while running solution:{c.w}\n{p.stderr}\n")
+        print(f"output:\n{out}")
+        return
+
+    if out != test_answer:
+        print(f"{c.r}Wrong answer!{c.w}")
+        f_ans,f_out = get_difference_disp(test_answer,out)
+        print("Expected:", len(test_answer),"\n\"", f_ans, sep="", end="\"\n\n")
+        print("Got:", len(out),"\n\"", f_out, sep="", end="\"\n")
+    else:
+        print(f"{c.g}Good answer!{c.w}")
+        print(f"Answer:\n{c.g}{out}{c.w}")
+    print(f"{c.d}took {round(t,3)}s{c.w}\n")
+
 def main():
     url, solution_path, unit_tests = parse_params(sys.argv)
     # print(f"url '{url}'\nfile '{solution_path}'\ncolor '{color}'\ntests'{unit_tests}'")
@@ -123,32 +149,12 @@ def main():
                 print(f"{c.cu}Test {i+1}{c.w}:")
                 test_input = z.read(filePaths[i].name).decode("utf-8")
                 test_answer = z.read(f"{filePaths[i].stem}.ans").decode("utf-8").strip()
-                t = perf_counter()
-
-                p = subprocess.run([sys.executable, solution_path],
-                                    input=test_input, encoding="utf-8", capture_output=True)
-                t = perf_counter()-t
                 
-                out = p.stdout.strip()
-                # strip all lines
-                out = "\n".join([line.strip() for line in out.split("\n")])
-
-                print("Sample input:\n", test_input, sep="")
-                if p.returncode != 0:
-                    print(f"{c.r}Error while running solution:{c.w}\n{p.stderr}\n")
-                    print(f"output:\n{out}")
-                    continue
-
-                if out != test_answer:
-                    print(f"{c.r}Wrong answer!{c.w}")
-                    f_ans,f_out = get_difference_disp(test_answer,out)
-                    print("Expected:", len(test_answer),"\n\"", f_ans, sep="", end="\"\n\n")
-                    print("Got:", len(out),"\n\"", f_out, sep="", end="\"\n")
-                else:
-                    print(f"{c.g}Good answer!{c.w}")
-                    print(f"Answer:\n{c.g}{out}{c.w}")
-                print(f"{c.d}took {round(t,3)}s{c.w}")
-                print()
+                try:
+                    run_test(solution_path, test_input, test_answer)
+                except TimeoutExpired:
+                    print(f"{c.r}subprocess timeout{c.w}\n")  
+                    
 
 if __name__ == "__main__":
     print(f" _   __      _   _   _       _                     _\n| | / /     | | | | (_)     | |                   | |\n| |/ /  __ _| |_| |_ _ ___  | |     ___   __ _  __| | ___ _ __\n|    \ / _` | __| __| / __| | |    / _ \ / _` |/ _` |/ _ \ '__|\n| |\  \ (_| | |_| |_| \__ \ | |___| (_) | (_| | (_| |  __/ |\n\_| \_/\__,_|\__|\__|_|___/ \_____/\___/ \__,_|\__,_|\___|_|\n{64*'='}")
