@@ -9,5 +9,5 @@ if [ $# -gt 1 ]; then
     s=$s" -t ${@:2:99}"
 fi
 
-echo "=> python3 $s"
+echo "> python3 $s"
 python3 $s
