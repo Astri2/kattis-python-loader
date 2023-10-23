@@ -3,7 +3,6 @@ import subprocess
 import sys
 import zipfile
 import io
-import re
 import requests
 from subprocess import TimeoutExpired
 from enum import Enum
@@ -41,7 +40,20 @@ def get_difference_disp(ans,out):
     f_ans+=str(c.y)+"\n".join(lines_ans[len_min:])+str(c.w)
     f_out+=str(c.y)+"\n".join(lines_out[len_min:])+str(c.w)
     return f_ans,f_out
-        
+
+def print_timeout_stdout(e: TimeoutError):
+    if e.stdout == None:
+        print(f"{c.y}stdout was empty{c.w}")
+        return
+    print("avant decode")
+    out = e.stdout.decode()
+    out_lines = out.splitlines()
+    out_lines = [((l[:1000]+f"{c.y}...{c.w}") if len(l) > 1000 else l)  for l in out.splitlines()][:100] + ([f"{c.y}...{c.w}"] if len(out_lines) > 100 else []) 
+    print("pret a print")
+    print(f"{c.y}output (limited to 100 lines and 1000 chars per line):{c.w}")
+    print("\n".join(out_lines))
+    print("fini de print")
+
 def parse_params(argv: list):
     argc = len(argv)
     url: str = ""
@@ -121,7 +133,6 @@ def run_test(solution_path: str, test_input: str, test_answer: str):
 
 def main():
     url, solution_path, unit_tests = parse_params(sys.argv)
-    # print(f"url '{url}'\nfile '{solution_path}'\ncolor '{color}'\ntests'{unit_tests}'")
     print(f"Kattis Problem url: {c.c}{url}{c.w}")
     print(f"Solution file: {c.c}{solution_path}{c.w}")
     if unit_tests: print(f"unit test IDs to run:{c.c}", *unit_tests, f"{c.w}\n")
@@ -152,8 +163,9 @@ def main():
                 
                 try:
                     run_test(solution_path, test_input, test_answer)
-                except TimeoutExpired:
+                except TimeoutExpired as e:
                     print(f"{c.r}subprocess timeout{c.w}\n")  
+                    print_timeout_stdout(e)
                     
 
 if __name__ == "__main__":
