@@ -1,6 +1,7 @@
 from pathlib import Path
 import subprocess
 import sys
+import os
 import zipfile
 import io
 import requests
@@ -9,7 +10,6 @@ from enum import Enum
 from time import perf_counter
 
 class c(Enum):
-
     __use_colors__ = False
 
     g  = "\033[0m\033[1;92m"
@@ -25,7 +25,6 @@ class c(Enum):
         return self.value if c.__use_colors__ else ""
     def enable_colors():
         c.__use_colors__ = True
-
 
 def get_difference_disp(ans,out):
     lines_ans = ans.split("\n")
@@ -56,21 +55,30 @@ def print_timeout_stdout(e: TimeoutError):
 
 def parse_params(argv: list):
     argc = len(argv)
+    samples_dir: str = ""
     url: str = ""
-    file: str = ""
+    file: Path = ""
     unit_tests: list = []
     folder = "./"
-    option_map = {"-t": "--test", "-c": "--color", "-u": "--url", "-n": "--name", "-f": "--file", "-d": "--directory"}
+    option_map = {"-t": "--test", "-c": "--color", "-u": "--url", "-n": "--name", "-f": "--file", "-d": "--directory", "-s": "--sample"}
     for i, arg in enumerate(argv): 
         if arg in option_map.keys(): argv[i] = option_map[arg]
     
     if "--color" in argv: 
         c.enable_colors()
+    if "--sample" in argv:
+        i = argv.index("--sample")
+        if i+1 == argc:
+            print(f"{c.r}error: --sample option requires a folder{c.w}")
+            exit(1)
+        samples_dir = argv[i+1]
+        if not samples_dir.endswith("/"): samples_dir+="/"
     if "--url" in argv:
         i = argv.index("--url")
         if i+1 == argc:
             print(f"{c.r}error: --url option requires an url{c.w}")
             exit(1)
+        if(samples_dir): print(f"{c.y}warning: --url option ingored because of --sample option{c.w}")
         url = argv[i+1]
     if "--file" in argv:
         i = argv.index("--file")
@@ -84,6 +92,7 @@ def parse_params(argv: list):
             print(f"{c.r}error: --folder option requires a folder path{c.w}")
         if(file): print(f"{c.y}warning: --folder option ingored because of --file option{c.w}")
         folder = argv[i+1]
+        if not folder.endswith("/"): folder+="/"
     if "--name" in argv:
         i = argv.index("--name")
         if i+1 == argc:
@@ -99,11 +108,11 @@ def parse_params(argv: list):
         while i < argc and str.isnumeric(argv[i]):
             unit_tests.append(int(argv[i]))
             i+=1
-    if not(url and file):
+    if not((url or samples_dir) and file):
         print("missing arguments, no url or file found")
-        print("format : python3 main.py [-u <problem url>] [-f <solution file>] [-d <solution directory>] [-n <problem/solution name>] [-t <unit_tests_to_run...>] [<options...>]")
+        print("format : python3 main.py [-u <problem url>] [-s <samples directory>] [-f <solution file>] [-d <solution directory>] [-n <problem/solution name>] [-t <unit_tests_to_run...>] [<options...>]")
         exit(1)
-    return url, file, unit_tests
+    return samples_dir, url, file, unit_tests
 
 def run_test(solution_path: str, test_input: str, test_answer: str):
     t = perf_counter()
@@ -129,21 +138,38 @@ def run_test(solution_path: str, test_input: str, test_answer: str):
     else:
         print(f"{c.g}Good answer!{c.w}")
         print(f"Answer:\n{c.g}{out}{c.w}")
-    print(f"{c.d}took {round(t,3)}s{c.w}\n")
+    print(f"{c.d}took {round(t,3)}s{c.w}\n")  
 
-def main():
-    url, solution_path, unit_tests = parse_params(sys.argv)
-    print(f"Kattis Problem url: {c.c}{url}{c.w}")
-    print(f"Solution file: {c.c}{solution_path}{c.w}")
-    if unit_tests: print(f"unit test IDs to run:{c.c}", *unit_tests, f"{c.w}\n")
-    else: print(f"unit test IDs to run: {c.c}all{c.w}\n")
-    
-    if not Path.exists(solution_path):
-        print(f"{c.r}error: file {solution_path} does not exist !{c.w}")
-        exit(1)
+def run_tests(inputs_answers, solution_path):
+    for i, (test_input, test_answer) in enumerate(inputs_answers):
+        print(f"{c.cu}Test {i+1}{c.w}:")
+        try:
+            run_test(solution_path, test_input, test_answer)
+        except TimeoutExpired as e:
+            print(f"{c.r}subprocess timeout{c.w}\n")  
+            print_timeout_stdout(e)
 
-    samples_url = f"{url}/file/statement/samples.zip"
-    
+INPUT_FILE_NAME_FORMAT = "{i}.in"
+OUTPUT_FILE_NAME_FORMAT = "{i}.ans"
+def read_samples_from_local(samples_dir, unit_tests):
+    inputs_answers = []
+    listdir = os.listdir(samples_dir)
+    for i in unit_tests:
+        input_file_path = INPUT_FILE_NAME_FORMAT.format(i=i)
+        output_file_path = OUTPUT_FILE_NAME_FORMAT.format(i=i)
+        if not input_file_path in listdir or not output_file_path in listdir:
+            print(f"{c.y}input or output file missing for test {i}, skipping{c.w}")
+            continue
+        with open(samples_dir + input_file_path, 'r') as input_file:
+            input_text = input_file.read()
+        with open(samples_dir + output_file_path, 'r') as output_file:
+            output_text = output_file.read().strip()
+        inputs_answers.append((input_text, output_text))
+    return inputs_answers
+
+def read_samples_from_internet(url, unit_tests):
+    inputs_answers = []
+    samples_url = samples_url = f"{url}/file/statement/samples.zip"
     r = requests.get(samples_url)
     if r.status_code == 404:
         print(f"{c.r}error: {samples_url} not found!{c.w}")
@@ -156,17 +182,29 @@ def main():
     with zipfile.ZipFile(io.BytesIO(r.content)) as z:
         filePaths = [Path(file.filename) for file in z.filelist if file.filename.endswith(".in")]
         for i in range(len(filePaths)):
-            if(len(unit_tests) == 0 or i+1 in unit_tests):
-                print(f"{c.cu}Test {i+1}{c.w}:")
+            if(len(unit_tests) == 0 or i in unit_tests):
                 test_input = z.read(filePaths[i].name).decode("utf-8")
                 test_answer = z.read(f"{filePaths[i].stem}.ans").decode("utf-8").strip()
-                
-                try:
-                    run_test(solution_path, test_input, test_answer)
-                except TimeoutExpired as e:
-                    print(f"{c.r}subprocess timeout{c.w}\n")  
-                    print_timeout_stdout(e)
-                    
+                inputs_answers.append((test_input, test_answer))
+    return inputs_answers
+
+def main():
+    samples_dir, url, solution_path, unit_tests = parse_params(sys.argv)
+    if samples_dir: print(f"in/ans samples folder: {c.c}{samples_dir}{c.w}")
+    if url: print(f"Kattis Problem url: {c.c}{url}{c.w}")
+    print(f"Solution file: {c.c}{solution_path}{c.w}")
+    if unit_tests: print(f"unit test IDs to run:{c.c}", *unit_tests, f"{c.w}\n")
+    else: print(f"unit test IDs to run: {c.c}all{c.w}\n")
+    
+    if not Path.exists(solution_path):
+        print(f"{c.r}error: file {solution_path} does not exist !{c.w}")
+        exit(1)
+
+    if samples_dir: 
+        inputs_answers = read_samples_from_local(samples_dir, unit_tests)
+    else: inputs_answers = read_samples_from_internet(url, unit_tests)
+    
+    run_tests(inputs_answers, solution_path)
 
 if __name__ == "__main__":
     print(f" _   __      _   _   _       _                     _\n| | / /     | | | | (_)     | |                   | |\n| |/ /  __ _| |_| |_ _ ___  | |     ___   __ _  __| | ___ _ __\n|    \ / _` | __| __| / __| | |    / _ \ / _` |/ _` |/ _ \ '__|\n| |\  \ (_| | |_| |_| \__ \ | |___| (_) | (_| | (_| |  __/ |\n\_| \_/\__,_|\__|\__|_|___/ \_____/\___/ \__,_|\__,_|\___|_|\n{64*'='}")
