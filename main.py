@@ -154,6 +154,7 @@ OUTPUT_FILE_NAME_FORMAT = "{i}.ans"
 def read_samples_from_local(samples_dir, unit_tests):
     inputs_answers = []
     listdir = os.listdir(samples_dir)
+    # you HAVE to explicit the unit tests, which suck but i'm not doing it now
     for i in unit_tests:
         input_file_path = INPUT_FILE_NAME_FORMAT.format(i=i)
         output_file_path = OUTPUT_FILE_NAME_FORMAT.format(i=i)
